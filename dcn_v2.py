@@ -8,12 +8,14 @@ from torch import nn
 from torch.autograd import Function
 from torch.autograd.function import once_differentiable
 from torch.nn.modules.utils import _pair
+from torch.cuda.amp import custom_fwd, custom_bwd
 
 import _ext as _backend
 
 
 class _DCNv2(Function):
     @staticmethod
+    @custom_fwd(cast_inputs=torch.float32)
     def forward(ctx, input, offset, mask, weight, bias, stride, padding, dilation, deformable_groups):
         ctx.stride = _pair(stride)
         ctx.padding = _pair(padding)
@@ -41,6 +43,7 @@ class _DCNv2(Function):
 
     @staticmethod
     @once_differentiable
+    @custom_bwd
     def backward(ctx, grad_output):
         input, offset, mask, weight, bias = ctx.saved_tensors
         grad_input, grad_offset, grad_mask, grad_weight, grad_bias = _backend.dcn_v2_backward(
